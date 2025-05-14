@@ -13,7 +13,7 @@ import { User } from './auth/entities/user.entity';
       port: 5432,
       username: 'postgres',
       password: '12345678',
-      database: 'sw1back',
+      database: 'sigback',
       entities: [User],
       synchronize: true,
     }),
