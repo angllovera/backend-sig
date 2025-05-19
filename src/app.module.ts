@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from './auth/auth.module';
-import { User } from './auth/entities/user.entity';
-import { PagoModule } from './pago/pago.module';
 
+import { AuthModule } from './auth/auth.module';
+import { PagoModule } from './pago/pago.module';
+import { DistribuidorModule } from './distribuidor/distribuidor.module';
+
+import { User } from './auth/entities/user.entity';
 import { Pago } from './pago/entities/pago.entity';
+import { Distribuidor } from './distribuidor/entities/distribuidor.entity';
 
 @Module({
   imports: [
@@ -17,11 +20,12 @@ import { Pago } from './pago/entities/pago.entity';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [User, Pago],
+      entities: [User, Pago, Distribuidor],
       synchronize: true,
     }),
     AuthModule,
     PagoModule,
+    DistribuidorModule,
   ],
 })
 export class AppModule {}
