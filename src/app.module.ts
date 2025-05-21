@@ -10,6 +10,9 @@ import { User } from './auth/entities/user.entity';
 import { Pago } from './pago/entities/pago.entity';
 import { Distribuidor } from './distribuidor/entities/distribuidor.entity';
 
+import { PedidoModule } from './pedido/pedido.module';
+import { Pedido } from './pedido/entities/pedido.entity';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -20,12 +23,13 @@ import { Distribuidor } from './distribuidor/entities/distribuidor.entity';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [User, Pago, Distribuidor],
+      entities: [User, Pago, Distribuidor, Pedido],
       synchronize: true,
     }),
     AuthModule,
     PagoModule,
     DistribuidorModule,
+    PedidoModule,
   ],
 })
 export class AppModule {}
