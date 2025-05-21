@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Delete,
+} from '@nestjs/common';
 import { PedidoService } from './pedido.service';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
@@ -9,7 +17,9 @@ export class PedidoController {
   constructor(private readonly pedidoService: PedidoService) {}
 
   @Post()
-  async create(@Body() createPedidoDto: CreatePedidoDto): Promise<{ success: boolean; mensaje: string; data: Pedido }> {
+  async create(
+    @Body() createPedidoDto: CreatePedidoDto,
+  ): Promise<{ success: boolean; mensaje: string; data: Pedido }> {
     const pedido = await this.pedidoService.create(createPedidoDto);
     return {
       success: true,

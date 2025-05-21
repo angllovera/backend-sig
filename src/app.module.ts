@@ -12,6 +12,8 @@ import { Distribuidor } from './distribuidor/entities/distribuidor.entity';
 
 import { PedidoModule } from './pedido/pedido.module';
 import { Pedido } from './pedido/entities/pedido.entity';
+import { EntregaModule } from './entrega/entrega.module';
+import { Entrega } from './entrega/entities/entrega.entity';
 
 @Module({
   imports: [
@@ -23,13 +25,14 @@ import { Pedido } from './pedido/entities/pedido.entity';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [User, Pago, Distribuidor, Pedido],
+      entities: [User, Pago, Distribuidor, Pedido, Entrega],
       synchronize: true,
     }),
     AuthModule,
     PagoModule,
     DistribuidorModule,
     PedidoModule,
+    EntregaModule,
   ],
 })
 export class AppModule {}
