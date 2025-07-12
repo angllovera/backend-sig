@@ -28,7 +28,9 @@
     "@nestjs/mapped-types": "^2.1.0",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/schedule": "^6.0.0",
     "@nestjs/typeorm": "^11.0.0",
+    "axios": "^1.10.0",
     "backend": "file:",
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
@@ -36,9 +38,10 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.14.1",
+    "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "stripe": "^18.1.0",
+    "stripe": "^12.18.0",
     "typeorm": "^0.3.22"
   },
   "devDependencies": {

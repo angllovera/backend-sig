@@ -1,21 +1,24 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule'; // ← Agregar
 
 import { AuthModule } from './auth/auth.module';
-import { PagoModule } from './pago/pago.module';
 import { DistribuidorModule } from './distribuidor/distribuidor.module';
+import { PedidoModule } from './pedido/pedido.module';
+import { SimulacionModule } from './simulacion/simulacion.module';
+import { PagoModule } from './pago/pago.module';
 
 import { User } from './auth/entities/user.entity';
-import { Pago } from './pago/entities/pago.entity';
 import { Distribuidor } from './distribuidor/entities/distribuidor.entity';
-
-import { PedidoModule } from './pedido/pedido.module';
 import { Pedido } from './pedido/entities/pedido.entity';
+import { Pago } from './pago/entities/pago.entity';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(), // ← Agregar para CRON jobs
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST,
@@ -23,13 +26,15 @@ import { Pedido } from './pedido/entities/pedido.entity';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [User, Pago, Distribuidor, Pedido],
-      synchronize: true,
+      entities: [User, Distribuidor, Pedido, Pago],
+      synchronize: true, // solo para desarrollo
     }),
     AuthModule,
-    PagoModule,
     DistribuidorModule,
     PedidoModule,
+    SimulacionModule,
+    PagoModule,
   ],
+  controllers: [AppController],
 })
 export class AppModule {}

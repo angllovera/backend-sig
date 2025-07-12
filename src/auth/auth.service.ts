@@ -1,90 +1,125 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
+
 import { User } from './entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
-import * as bcrypt from 'bcrypt';
-import { UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from './dto/login.dto';
+import { Distribuidor } from '../distribuidor/entities/distribuidor.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    private readonly jwtService: JwtService, // ← Añadir esto
+
+    @InjectRepository(Distribuidor)
+    private readonly distribuidorRepo: Repository<Distribuidor>,
+
+    private readonly jwtService: JwtService,
   ) {}
 
-  // Este método registra un nuevo usuario
-  async register(data: RegisterDto): Promise<Omit<User, 'password'>> {
-    const existing = await this.userRepo.findOne({
-      where: { email: data.email },
+  async register(dto: RegisterDto) {
+    const existing = await this.userRepo.findOne({ where: { email: dto.email } });
+    if (existing) {
+      throw new ConflictException('El correo ya está registrado');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const user = this.userRepo.create({
+      name: dto.name,
+      email: dto.email,
+      password: hashedPassword,
     });
 
-    if (existing) {
-      throw new ConflictException('Este correo ya está registrado');
-    }
+    const savedUser = await this.userRepo.save(user);
 
-    const hashedPassword = await bcrypt.hash(data.password, 10);
-    const user = this.userRepo.create({ ...data, password: hashedPassword });
-    const saved = await this.userRepo.save(user);
+    // Crear distribuidor automáticamente vinculado al usuario
+    const distribuidor = this.distribuidorRepo.create({
+      nombre: dto.name,
+      contacto: dto.email,
+      vehiculo: 'Por definir',
+      capacidad: 10, // Valor por defecto
+      userId: savedUser.id, // ← Vincular con el usuario
+    });
 
-    const { password, ...userWithoutPassword } = saved;
-    return userWithoutPassword;
+    await this.distribuidorRepo.save(distribuidor);
+    console.log(`✅ Usuario y distribuidor creados para: ${dto.name}`);
+
+    return { message: 'Usuario registrado correctamente' };
   }
 
-  // Este método devuelve todos los usuarios sin la contraseña
-  async getAllUsers(): Promise<Omit<User, 'password'>[]> {
-    const users = await this.userRepo.find();
-    return users.map(({ password, ...rest }) => rest); // ocultamos contraseña
-  }
-
-  // Actualizar usuario
-  async updateUser(
-    id: number,
-    data: Partial<User>,
-  ): Promise<Omit<User, 'password'> | null> {
-    const user = await this.userRepo.findOne({ where: { id } });
-    if (!user) return null;
-
-    const updated = Object.assign(user, data);
-    const saved = await this.userRepo.save(updated);
-    const { password, ...userData } = saved;
-    return userData;
-  }
-
-  // Eliminar usuario
-  async deleteUser(id: number): Promise<boolean> {
-    const result = await this.userRepo.delete(id);
-    return (result.affected ?? 0) > 0;
-  }
-
-  // Obtener usuario por ID
-  async getUserById(id: number): Promise<Omit<User, 'password'> | null> {
-    const user = await this.userRepo.findOne({ where: { id } });
-    if (!user) return null;
-    const { password, ...userData } = user;
-    return userData;
-  }
-
-  // Método para iniciar sesión
-  async login(data: LoginDto): Promise<{ accessToken: string }> {
-    const user = await this.userRepo.findOne({ where: { email: data.email } });
+  async login(dto: LoginDto) {
+    const user = await this.userRepo.findOne({ where: { email: dto.email } });
 
     if (!user) {
-      throw new UnauthorizedException('Correo o contraseña inválidos');
+      throw new NotFoundException('Usuario no encontrado');
     }
 
-    const isPasswordValid = await bcrypt.compare(data.password, user.password);
+    const valid = await bcrypt.compare(dto.password, user.password);
+    if (!valid) {
+      throw new UnauthorizedException('Contraseña incorrecta');
+    }
 
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Correo o contraseña inválidos');
+    // 🎯 ACTUALIZAR COORDENADAS DEL DISTRIBUIDOR si vienen en el login
+    if (dto.latitud && dto.longitud) {
+      await this.actualizarUbicacionDistribuidor(user.id, dto.latitud, dto.longitud);
     }
 
     const payload = { sub: user.id, email: user.email };
-    const token = this.jwtService.sign(payload);
+    const token = await this.jwtService.signAsync(payload);
 
-    return { accessToken: token };
+    return { 
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      }
+    };
+  }
+
+  /**
+   * Actualiza las coordenadas del distribuidor asociado al usuario
+   */
+  private async actualizarUbicacionDistribuidor(userId: number, lat: number, lng: number) {
+    const distribuidor = await this.distribuidorRepo.findOne({ where: { userId } });
+    
+    if (distribuidor) {
+      distribuidor.latitud = lat;
+      distribuidor.longitud = lng;
+      await this.distribuidorRepo.save(distribuidor);
+      console.log(`📍 Coordenadas actualizadas para distribuidor: ${distribuidor.nombre} (${lat}, ${lng})`);
+    } else {
+      console.warn(`⚠️ No se encontró distribuidor para usuario ID: ${userId}`);
+    }
+  }
+
+  async getAllUsers() {
+    return this.userRepo.find();
+  }
+
+  async getUserById(id: number) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+    return user;
+  }
+
+  async updateUser(id: number, data: Partial<RegisterDto>) {
+    const user = await this.getUserById(id);
+    Object.assign(user, data);
+    return this.userRepo.save(user);
+  }
+
+  async deleteUser(id: number) {
+    const user = await this.getUserById(id);
+    return this.userRepo.remove(user);
   }
 }

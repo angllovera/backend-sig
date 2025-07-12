@@ -1,5 +1,5 @@
 // src/distribuidor/distribuidor.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Distribuidor } from './entities/distribuidor.entity';
@@ -30,6 +30,17 @@ export class DistribuidorService {
     await this.repo.update(id, dto);
     return this.findOne(id);
   }
+
+  async updateUbicacion(id: number, lat: number, lng: number) {
+    const dist = await this.repo.findOneBy({ id });
+    if (!dist) throw new NotFoundException('Distribuidor no encontrado');
+
+    dist.latitud = lat;
+    dist.longitud = lng;
+
+    return this.repo.save(dist);
+  }
+
 
   async remove(id: number) {
     await this.repo.delete(id);

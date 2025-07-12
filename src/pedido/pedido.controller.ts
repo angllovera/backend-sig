@@ -1,82 +1,95 @@
-import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
+import {
+  Controller, Get, Param, UseGuards,
+  Patch, Body, Request, Post
+} from '@nestjs/common';
 import { PedidoService } from './pedido.service';
-import { CreatePedidoDto } from './dto/create-pedido.dto';
-import { UpdatePedidoDto } from './dto/update-pedido.dto';
-import { Pedido } from './entities/pedido.entity';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-@Controller('pedidos')
+@Controller('pedido')
+@UseGuards(JwtAuthGuard)
 export class PedidoController {
   constructor(private readonly pedidoService: PedidoService) {}
 
-  @Post()
-  async create(@Body() createPedidoDto: CreatePedidoDto): Promise<{ success: boolean; mensaje: string; data: Pedido }> {
-    const pedido = await this.pedidoService.create(createPedidoDto);
-    return {
-      success: true,
-      mensaje: 'Pedido creado exitosamente',
-      data: pedido,
-    };
+  @Get()
+  getAll() {
+    return this.pedidoService.getAll();
   }
 
-  @Get()
-  async findAll(): Promise<{ success: boolean; cantidad: number; data: Pedido[] }> {
-    const pedidos = await this.pedidoService.findAll();
-    return {
-      success: true,
-      cantidad: pedidos.length,
-      data: pedidos,
-    };
+  @Get('mis-pedidos')
+  getMisPedidos(@Request() req) {
+    return this.pedidoService.getPedidosPorDistribuidor(req.user.id);
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string): Promise<{ success: boolean; data: Pedido }> {
-    const pedido = await this.pedidoService.findOne(+id);
-    return {
-      success: true,
-      data: pedido,
-    };
+  getById(@Param('id') id: string) {
+    return this.pedidoService.getById(+id);
   }
 
-  @Put(':id')
-  async update(
-    @Param('id') id: string,
-    @Body() updatePedidoDto: UpdatePedidoDto,
-  ): Promise<{ success: boolean; mensaje: string; data: Pedido }> {
-    const pedido = await this.pedidoService.update(+id, updatePedidoDto);
-    return {
-      success: true,
-      mensaje: 'Pedido actualizado exitosamente',
-      data: pedido,
-    };
+  @Patch(':id/entrega')
+  registrarEntrega(@Param('id') id: string, @Body() body: {
+    estado: string;
+    observacion?: string;
+    latitud: number;
+    longitud: number;
+  }) {
+    return this.pedidoService.registrarEntrega(+id, body);
   }
 
-  @Delete(':id')
-  async remove(@Param('id') id: string): Promise<{ success: boolean; mensaje: string; data: Pedido }> {
-    const pedido = await this.pedidoService.remove(+id);
-    return {
-      success: true,
-      mensaje: 'Pedido eliminado exitosamente',
-      data: pedido,
-    };
+  @Post('asignar')
+  asignarPedidos() {
+    return this.pedidoService.asignarPedidos();
   }
 
-  @Get('cliente/:cliente')
-  async findByCliente(@Param('cliente') cliente: string): Promise<{ success: boolean; cantidad: number; data: Pedido[] }> {
-    const pedidos = await this.pedidoService.findByCliente(cliente);
-    return {
-      success: true,
-      cantidad: pedidos.length,
-      data: pedidos,
-    };
+  @Post('asignar-automatico')
+  async asignarPedidosAutomatico() {
+    return this.pedidoService.asignarPedidosPendientesManual();
   }
 
-  @Get('estado/:estado')
-  async findByEstado(@Param('estado') estado: string): Promise<{ success: boolean; cantidad: number; data: Pedido[] }> {
-    const pedidos = await this.pedidoService.findByEstado(estado);
-    return {
-      success: true,
-      cantidad: pedidos.length,
-      data: pedidos,
-    };
+  @Post('calcular-ruta')
+  async calcularRuta(@Body() body: { lat: number; lng: number }, @Request() req) {
+    try {
+      console.log(`🗺️ Calculando ruta para distribuidor ID: ${req.user.id}`);
+      console.log(`📍 Coordenadas recibidas: ${body.lat}, ${body.lng}`);
+      
+      const ruta = await this.pedidoService.calcularRuta(req.user.id, body.lat, body.lng);
+      
+      console.log(`✅ Ruta calculada exitosamente`);
+      return ruta;
+    } catch (error) {
+      console.error(`❌ Error calculando ruta: ${error.message}`);
+      throw error;
+    }
+  }
+
+  @Get(':id/detalle')
+  async getDetallePedido(@Param('id') id: string) {
+    return this.pedidoService.getDetalleConPagos(+id);
+  }
+
+  @Get(':id/estado')
+  async estadoPedido(@Param('id') id: string) {
+    return this.pedidoService.getEstadoPedido(+id);
+  }
+
+  @Get('estadisticas/distribuidor')
+  async getEstadisticasDistribuidor(@Request() req) {
+    try {
+      const stats = await this.pedidoService.getEstadisticasDistribuidor(req.user.id);
+      return stats;
+    } catch (error) {
+      console.error(`❌ Error obteniendo estadísticas: ${error.message}`);
+      throw error;
+    }
+  }
+
+  @Get('historial/entregas')
+  async getHistorialEntregas(@Request() req) {
+    try {
+      const historial = await this.pedidoService.getHistorialEntregas(req.user.id);
+      return historial;
+    } catch (error) {
+      console.error(`❌ Error obteniendo historial: ${error.message}`);
+      throw error;
+    }
   }
 }

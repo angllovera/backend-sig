@@ -1,5 +1,24 @@
+import { IsIn, IsNumber, IsOptional, IsString } from 'class-validator';
+
 export class CreatePagoDto {
-  tipo: 'qr' | 'transferencia' | 'efectivo';
+  @IsNumber()
+  pedidoId: number;
+
+  @IsIn(['efectivo', 'transferencia', 'qr', 'stripe'])
+  metodo: 'efectivo' | 'transferencia' | 'qr' | 'stripe';
+
+  @IsNumber()
   monto: number;
-  compraId: number;
+
+  @IsOptional()
+  @IsString()
+  descripcion?: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitud?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitud?: number;
 }

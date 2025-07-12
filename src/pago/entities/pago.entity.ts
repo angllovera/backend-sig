@@ -1,22 +1,26 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from 'typeorm';
+import { Pedido } from '../../pedido/entities/pedido.entity';
 
 @Entity()
 export class Pago {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  tipo: 'qr' | 'transferencia' | 'efectivo';
+  @Column({ type: 'enum', enum: ['efectivo', 'transferencia', 'qr', 'stripe'] })
+  metodo: 'efectivo' | 'transferencia' | 'qr' | 'stripe';
 
   @Column('decimal')
   monto: number;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  fecha: Date;
+  @Column({ nullable: true, type: 'text' }) // acepta string o null
+  qrUrl?: string | null;
 
   @Column({ default: 'pendiente' })
   estado: 'pendiente' | 'completado' | 'rechazado';
 
-  @Column()
-  compraId: number; // Asociado al pedido
+  @CreateDateColumn()
+  fecha: Date;
+
+  @ManyToOne(() => Pedido, pedido => pedido.pagos)
+  pedido: Pedido;
 }

@@ -1,4 +1,3 @@
-// src/distribuidor/distribuidor.controller.ts
 import {
   Controller,
   Get,
@@ -7,10 +6,13 @@ import {
   Param,
   Delete,
   Put,
+  Patch,
+  UseGuards
 } from '@nestjs/common';
 import { DistribuidorService } from './distribuidor.service';
 import { CreateDistribuidorDto } from './dto/create-distribuidor.dto';
 import { UpdateDistribuidorDto } from './dto/update-distribuidor.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('distribuidores')
 export class DistribuidorController {
@@ -19,6 +21,15 @@ export class DistribuidorController {
   @Post()
   create(@Body() dto: CreateDistribuidorDto) {
     return this.service.create(dto);
+  }
+
+  @Patch(':id/ubicacion')
+  @UseGuards(JwtAuthGuard)
+  updateUbicacion(
+    @Param('id') id: number,
+    @Body() body: { lat: number; lng: number },
+  ) {
+    return this.service.updateUbicacion(id, body.lat, body.lng);
   }
 
   @Get()
@@ -41,13 +52,11 @@ export class DistribuidorController {
     return this.service.remove(+id);
   }
 
-  // En distribuidor.controller.ts
   @Get('buscar/:nombre')
   buscarPorNombre(@Param('nombre') nombre: string) {
     return this.service.buscarPorNombre(nombre);
   }
 
-  // En distribuidor.controller.ts
   @Get('capacidad/:min')
   filtrarPorCapacidad(@Param('min') min: string) {
     return this.service.filtrarPorCapacidad(parseInt(min));
