@@ -1,4 +1,3 @@
-// src/distribuidor/distribuidor.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -47,14 +46,12 @@ export class DistribuidorService {
     return { deleted: true };
   }
 
-  // En distribuidor.service.ts
   buscarPorNombre(nombre: string) {
     return this.repo.find({
       where: { nombre },
     });
   }
 
-  // En distribuidor.service.ts
   filtrarPorCapacidad(min: number) {
     return this.repo
       .createQueryBuilder('d')

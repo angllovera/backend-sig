@@ -10,10 +10,10 @@ import { json } from 'express';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // ✅ Middleware necesario para recibir body en JSON
+  // Middleware necesario para recibir body en JSON
   app.use(express.json());
 
-  // ✅ Webhook de Stripe (si lo usas)
+  // Webhook de Stripe (si lo usas)
   app.use(
     '/stripe/webhook',
     json({
@@ -23,7 +23,7 @@ async function bootstrap() {
     }),
   );
 
-  // ✅ Middleware para imprimir peticiones entrantes
+  // Middleware para imprimir peticiones entrantes
   app.use((req, res, next) => {
     console.log(`📨 ${req.method} ${req.originalUrl}`);
     if (req.method !== 'GET') {
@@ -32,7 +32,7 @@ async function bootstrap() {
     next();
   });
 
-  // ✅ Validaciones globales
+  // Validaciones globales
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -41,13 +41,13 @@ async function bootstrap() {
     }),
   );
 
-  // ✅ CORS para Flutter/web
+  // CORS para Flutter/web
   app.enableCors({
     origin: '*',
     credentials: true,
   });
 
-  // ✅ Ejecutar seeder
+  // Ejecutar seeder
   const distribuidorRepo = app.get(getRepositoryToken(Distribuidor));
   await seedDistribuidores(distribuidorRepo);
 

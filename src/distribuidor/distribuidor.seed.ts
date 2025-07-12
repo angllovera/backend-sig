@@ -1,4 +1,3 @@
-// src/distribuidor/distribuidor.seed.ts
 import { Distribuidor } from './entities/distribuidor.entity';
 import { Repository } from 'typeorm';
 

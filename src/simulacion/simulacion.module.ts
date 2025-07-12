@@ -3,10 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SimulacionController } from './simulacion.controller';
 import { SimulacionService } from './simulacion.service';
 import { Pedido } from '../pedido/entities/pedido.entity';
-import { Distribuidor } from '../distribuidor/entities/distribuidor.entity'; // ← Agregar esta línea
+import { Distribuidor } from '../distribuidor/entities/distribuidor.entity'; 
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Pedido, Distribuidor])], // ← Agregar Distribuidor aquí
+  imports: [TypeOrmModule.forFeature([Pedido, Distribuidor])], 
   controllers: [SimulacionController],
   providers: [SimulacionService],
 })

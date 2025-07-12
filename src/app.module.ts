@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
-import { ScheduleModule } from '@nestjs/schedule'; // ← Agregar
+import { ScheduleModule } from '@nestjs/schedule'; 
 
 import { AuthModule } from './auth/auth.module';
 import { DistribuidorModule } from './distribuidor/distribuidor.module';
@@ -18,7 +18,7 @@ import { AppController } from './app.controller';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    ScheduleModule.forRoot(), // ← Agregar para CRON jobs
+    ScheduleModule.forRoot(), 
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST,

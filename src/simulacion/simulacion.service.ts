@@ -138,7 +138,7 @@ export class SimulacionService {
     const codigo = await this.generarCodigoPedido();
     const total = body.precio_unitario * body.cantidad;
 
-    // 🎯 ASIGNAR DISTRIBUIDOR AUTOMÁTICAMENTE
+    //  ASIGNAR DISTRIBUIDOR AUTOMÁTICAMENTE
     const distribuidor = await this.asignarDistribuidorOptimo(body.lat, body.lng);
 
     // Crear el pedido
@@ -170,13 +170,11 @@ export class SimulacionService {
       console.warn(`⚠️ [SIMULACION] Pedido creado SIN distribuidor asignado`);
     }
 
-    // Guardar el pedido
+
     await this.pedidoRepo.save(pedido);
 
     // Log para debug
     console.log(`✅ [SIMULACION] Pedido ${codigo} creado y asignado a distribuidor: ${distribuidor?.nombre || 'NINGUNO'}`);
-
-    // Recargar el pedido con todas las relaciones
     const pedidoCompleto = await this.pedidoRepo.findOne({
       where: { id: pedido.id },
       relations: ['distribuidor', 'pagos']
@@ -188,7 +186,7 @@ export class SimulacionService {
   async listarPedidos(): Promise<PedidoRespuestaDto[]> {
     const pedidos = await this.pedidoRepo.find({
       where: { origen: 'simulado' },
-      relations: ['distribuidor'], // ← Incluir distribuidor en la respuesta
+      relations: ['distribuidor'], 
       order: { id: 'DESC' },
     });
 
@@ -200,7 +198,7 @@ export class SimulacionService {
       latitud: p.latitud ?? 0,
       longitud: p.longitud ?? 0,
       estado: p.estado,
-      // distribuidor: p.distribuidor?.nombre || 'Sin asignar', // ← Comentado si no está en el DTO
+  
     }));
   }
 

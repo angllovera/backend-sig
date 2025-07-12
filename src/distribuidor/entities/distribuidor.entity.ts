@@ -1,4 +1,3 @@
-// distribuidor/entities/distribuidor.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, OneToOne, JoinColumn } from 'typeorm';
 import { Pedido } from '../../pedido/entities/pedido.entity';
 import { User } from '../../auth/entities/user.entity';

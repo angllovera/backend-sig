@@ -1,4 +1,3 @@
-// src/distribuidor/distribuidor.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DistribuidorService } from './distribuidor.service';

@@ -363,7 +363,7 @@ export class PedidoService {
           codigoPedido: destino.codigoPedido,
           orden: orden + 1,
           estado: 'pendiente',
-          total: pedidoOriginal?.total || 0, // ✅ CAMPO TOTAL INCLUIDO
+          total: pedidoOriginal?.total || 0, 
         };
       });
 

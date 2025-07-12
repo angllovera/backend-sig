@@ -68,7 +68,7 @@ export class AuthService {
       throw new UnauthorizedException('Contraseña incorrecta');
     }
 
-    // 🎯 ACTUALIZAR COORDENADAS DEL DISTRIBUIDOR si vienen en el login
+    // ACTUALIZAR COORDENADAS DEL DISTRIBUIDOR si vienen en el login
     if (dto.latitud && dto.longitud) {
       await this.actualizarUbicacionDistribuidor(user.id, dto.latitud, dto.longitud);
     }

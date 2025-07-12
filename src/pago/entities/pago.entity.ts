@@ -12,7 +12,7 @@ export class Pago {
   @Column('decimal')
   monto: number;
 
-  @Column({ nullable: true, type: 'text' }) // acepta string o null
+  @Column({ nullable: true, type: 'text' }) 
   qrUrl?: string | null;
 
   @Column({ default: 'pendiente' })

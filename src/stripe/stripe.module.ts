@@ -8,8 +8,8 @@ import { PedidoModule } from '../pedido/pedido.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Pedido, Pago]), // ✅ acceso a repositorios
-    PedidoModule, // ✅ acceso a PedidoService (si se usa)
+    TypeOrmModule.forFeature([Pedido, Pago]), 
+    PedidoModule, 
   ],
   providers: [StripeService],
   controllers: [StripeController],

@@ -14,7 +14,7 @@ export class Pedido {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // === Datos comunes (reales o simulados) ===
+  // === Datos comunes ===
   @Column('varchar', { length: 100 })
   cliente: string;
 
@@ -52,14 +52,14 @@ export class Pedido {
   @Column({ default: false })
   entregado: boolean;
 
-  // === Para simulación u organización ===
+  // === Para simulación ===
   @Column({ nullable: true, unique: true })
   codigoPedido?: string;
 
   @Column({ nullable: true })
   descripcion?: string;
 
-  @Column({ default: 'web' }) // o 'simulado'
+  @Column({ default: 'web' }) 
   origen: string;
 
   // === Relación con distribuidor ===

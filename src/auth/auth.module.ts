@@ -16,7 +16,7 @@ import { Distribuidor } from '../distribuidor/entities/distribuidor.entity';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET'), // <- aquí la corrección
+        secret: config.get<string>('JWT_SECRET'), 
         signOptions: { expiresIn: '1d' },
       }),
     }),
