@@ -1,19 +1,64 @@
 import { Controller, Get, Query, Res } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { Response } from 'express';
+import { Pedido } from '../pedido/entities/pedido.entity';
+import { Pago } from '../pago/entities/pago.entity';
 
 @Controller()
 export class PagesController {
+  
+  constructor(
+    @InjectRepository(Pedido)
+    private readonly pedidoRepo: Repository<Pedido>,
+    @InjectRepository(Pago)
+    private readonly pagoRepo: Repository<Pago>,
+  ) {}
   
   /**
    * 🎉 Página de pago exitoso para el cliente
    */
   @Get('pago-exito')
-  pagoExito(
+  async pagoExito(
     @Query('pedidoId') pedidoId: string,
     @Query('status') status: string,
     @Res() res: Response
   ) {
     console.log(`✅ Cliente accedió a página de éxito - Pedido: ${pedidoId}, Status: ${status}`);
+    
+    // 🔧 NUEVO: Marcar pedido como entregado cuando el usuario llega aquí
+    if (pedidoId && status === 'success') {
+      try {
+        const pedido = await this.pedidoRepo.findOne({ 
+          where: { id: +pedidoId },
+          relations: ['pagos']
+        });
+        
+        if (pedido) {
+          console.log(`🔄 Marcando pedido ${pedidoId} como entregado tras acceso a página de éxito`);
+          
+          // Actualizar pago a completado
+          const pago = pedido.pagos?.find(p => p.estado === 'pendiente');
+          if (pago) {
+            pago.estado = 'completado';
+            await this.pagoRepo.save(pago);
+            console.log(`✅ Pago ${pago.id} marcado como completado`);
+          }
+          
+          // Marcar pedido como entregado
+          pedido.estado = 'entregado';
+          pedido.entregado = true;
+          pedido.observacion = `Entregado automáticamente tras confirmación de pago exitoso (${new Date().toISOString()})`;
+          await this.pedidoRepo.save(pedido);
+          
+          console.log(`✅ Pedido ${pedidoId} marcado como entregado tras acceso a página de éxito`);
+        } else {
+          console.log(`❌ Pedido ${pedidoId} no encontrado`);
+        }
+      } catch (error) {
+        console.error(`❌ Error marcando pedido ${pedidoId} como entregado:`, error);
+      }
+    }
     
     const html = `
       <!DOCTYPE html>
