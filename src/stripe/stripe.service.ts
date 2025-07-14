@@ -24,7 +24,7 @@ export class StripeService {
   }
 
   /**
-   * Genera una sesión de checkout en Stripe y retorna el URL y QR del pago.
+   * 🔧 CORREGIDO: Genera una sesión de checkout en Stripe con URLs correctas
    */
   async crearCheckout(pedidoId: number, descripcion: string, montoBs: number) {
     console.log(`🔄 Creando sesión de Stripe para pedido ${pedidoId}`);
@@ -51,6 +51,7 @@ export class StripeService {
           pedidoId: pedidoId.toString(),
           monto: montoBs.toString(),
         },
+        // 🔧 CORREGIDO: URLs sin duplicación
         success_url: `${process.env.SUCCESS_URL}?pedidoId=${pedidoId}&status=success`,
         cancel_url: `${process.env.CANCEL_URL}?pedidoId=${pedidoId}&status=cancelled`,
         expires_at: Math.floor(Date.now() / 1000) + 3600, // Expira en 1 hora
@@ -58,6 +59,8 @@ export class StripeService {
 
       console.log(`✅ Sesión de Stripe creada: ${session.id}`);
       console.log(`🔗 URL de pago: ${session.url}`);
+      console.log(`✅ Success URL: ${process.env.SUCCESS_URL}?pedidoId=${pedidoId}&status=success`);
+      console.log(`❌ Cancel URL: ${process.env.CANCEL_URL}?pedidoId=${pedidoId}&status=cancelled`);
 
       // Generar QR de la URL de pago
       const qrImage = await QRCode.toDataURL(session.url!, {
@@ -122,9 +125,6 @@ export class StripeService {
         throw new NotFoundException(`Pedido ${pedidoId} no encontrado`);
       }
 
-      // 🔧 MEJORADO: Usar el método del PagoService para confirmar y marcar como entregado
-      // Necesitaremos inyectar PagoService aquí o crear el registro directamente
-      
       // Verificar si ya existe un pago para este pedido
       const pagoExistente = await this.pagoRepo.findOne({
         where: { 

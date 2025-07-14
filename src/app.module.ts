@@ -8,6 +8,7 @@ import { DistribuidorModule } from './distribuidor/distribuidor.module';
 import { PedidoModule } from './pedido/pedido.module';
 import { SimulacionModule } from './simulacion/simulacion.module';
 import { PagoModule } from './pago/pago.module';
+import { PagesModule } from './pages/pages.module'; // 🔧 NUEVO IMPORT
 
 import { User } from './auth/entities/user.entity';
 import { Distribuidor } from './distribuidor/entities/distribuidor.entity';
@@ -34,6 +35,7 @@ import { AppController } from './app.controller';
     PedidoModule,
     SimulacionModule,
     PagoModule,
+    PagesModule, // 🔧 AGREGAR ESTE MÓDULO
   ],
   controllers: [AppController],
 })
