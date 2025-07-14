@@ -244,14 +244,10 @@ async calcularRuta(distribuidorId: number, lat: number, lng: number) {
   console.log(`🗺️ Calculando rutas para distribuidor ${distribuidorId}`);
 
   // 🔧 NUEVO: Intentar usar última ubicación de entrega como punto de inicio
-  const ultimaUbicacion = await this.obtenerUltimaUbicacionEntrega(distribuidorId);
-  const puntoInicio = ultimaUbicacion || { lat, lng };
+  const puntoInicio = { lat, lng }; 
   
-  if (ultimaUbicacion) {
-    console.log(`📍 Usando última ubicación de entrega como inicio: ${puntoInicio.lat}, ${puntoInicio.lng}`);
-  } else {
-    console.log(`📍 Usando ubicación actual como inicio: ${puntoInicio.lat}, ${puntoInicio.lng}`);
-  }
+  console.log(`📍 Usando ubicación GPS actual como inicio: ${puntoInicio.lat}, ${puntoInicio.lng}`);
+
 
   // Obtener solo pedidos NO entregados
   const pedidos = await this.pedidoRepo.find({
@@ -260,7 +256,6 @@ async calcularRuta(distribuidorId: number, lat: number, lng: number) {
       entregado: false, // 🔧 IMPORTANTE: Solo pedidos pendientes
     },
     relations: ['distribuidor', 'pagos'],
-    order: { id: 'ASC' },
     take: 23,
   });
 
@@ -372,8 +367,7 @@ async calcularRuta(distribuidorId: number, lat: number, lng: number) {
         ordenOriginal: destinos.map((_, index) => index),
         ordenOptimizado: waypointOrder,
         ahorro: waypointOrder.length > 0 ? 'Ruta optimizada automáticamente' : 'Sin optimización aplicada',
-        puntoInicio: ultimaUbicacion ? 'Última ubicación de entrega' : 'Ubicación actual',
-      }
+        puntoInicio: 'Ubicación GPS actual',      }
     };
   } catch (error) {
     console.error('❌ Error al calcular ruta:', error);
@@ -387,8 +381,7 @@ async calcularRutaPersonalizada(distribuidorId: number, lat: number, lng: number
   console.log(`📥 Pedidos seleccionados: ${pedidoIds.join(', ')}`);
 
   // 🔧 NUEVO: Usar última ubicación de entrega como punto de inicio
-  const ultimaUbicacion = await this.obtenerUltimaUbicacionEntrega(distribuidorId);
-  const puntoInicio = ultimaUbicacion || { lat, lng };
+  const puntoInicio = { lat, lng };
   
   console.log(`📍 Punto de inicio: ${puntoInicio.lat}, ${puntoInicio.lng}`);
 
@@ -482,8 +475,7 @@ async calcularRutaPersonalizada(distribuidorId: number, lat: number, lng: number
         tiempoTotal: rutas[0]?.duracionMin || 0,
       },
       optimizacion: {
-        puntoInicio: ultimaUbicacion ? 'Última ubicación de entrega' : 'Ubicación actual',
-        pedidosSeleccionados: pedidoIds.length,
+      puntoInicio: 'Ubicación GPS actual',        pedidosSeleccionados: pedidoIds.length,
         pedidosValidos: destinos.length,
       }
     };
