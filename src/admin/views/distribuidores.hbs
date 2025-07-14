@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .card { border: none; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .table { border-radius: 10px; overflow: hidden; }
+        .btn { border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/admin">
+                <i class="fas fa-tachometer-alt me-2"></i>
+                Admin Panel
+            </a>
+            
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/admin">Dashboard</a>
+                <a class="nav-link active" href="/admin/distribuidores">Distribuidores</a>
+                <a class="nav-link" href="/admin/crear-pedido">Crear Pedido</a>
+                <a class="nav-link" href="/admin/pedidos">Ver Pedidos</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-4">
+                    <i class="fas fa-truck text-primary me-2"></i>
+                    Gestión de Distribuidores
+                </h1>
+            </div>
+        </div>
+
+        <!-- Mostrar mensajes de éxito/error desde URL params -->
+        <div id="alert-container"></div>
+
+        <div class="row">
+            <!-- Formulario para registrar nuevo distribuidor -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-plus-circle me-2"></i>
+                            Registrar Nuevo Distribuidor
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="/admin/distribuidores/registrar" method="POST" id="form-registro">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">
+                                    <i class="fas fa-user me-1"></i>
+                                    Nombre Completo
+                                </label>
+                                <input 
+                                    type="text" 
+                                    class="form-control" 
+                                    id="name" 
+                                    name="name" 
+                                    required
+                                    placeholder="Ej: Juan Pérez"
+                                >
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="email" class="form-label">
+                                    <i class="fas fa-envelope me-1"></i>
+                                    Correo Electrónico
+                                </label>
+                                <input 
+                                    type="email" 
+                                    class="form-control" 
+                                    id="email" 
+                                    name="email" 
+                                    required
+                                    placeholder="distribuidor@email.com"
+                                >
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="password" class="form-label">
+                                    <i class="fas fa-lock me-1"></i>
+                                    Contraseña
+                                </label>
+                                <input 
+                                    type="password" 
+                                    class="form-control" 
+                                    id="password" 
+                                    name="password" 
+                                    required
+                                    minlength="6"
+                                    placeholder="Mínimo 6 caracteres"
+                                >
+                                <div class="form-text">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        La contraseña debe tener al menos 6 caracteres
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-success w-100" id="btn-registrar">
+                                <i class="fas fa-user-plus me-2"></i>
+                                Registrar Distribuidor
+                            </button>
+                        </form>
+                        
+                        <hr class="my-3">
+                        
+                        <div class="alert alert-info">
+                            <small>
+                                <i class="fas fa-lightbulb me-1"></i>
+                                <strong>Nota:</strong> El distribuidor podrá establecer su ubicación cuando haga login por primera vez desde la app móvil.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de distribuidores existentes -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list me-2"></i>
+                            Distribuidores Registrados ({{distribuidores.length}})
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {{#if distribuidores}}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th><i class="fas fa-id-badge me-1"></i>ID</th>
+                                        <th><i class="fas fa-user me-1"></i>Nombre</th>
+                                        <th><i class="fas fa-envelope me-1"></i>Contacto</th>
+                                        <th><i class="fas fa-truck me-1"></i>Vehículo</th>
+                                        <th><i class="fas fa-weight me-1"></i>Capacidad</th>
+                                        <th><i class="fas fa-map-marker-alt me-1"></i>Ubicación</th>
+                                        <th><i class="fas fa-chart-bar me-1"></i>Estadísticas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{#each distribuidores}}
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-secondary">{{id}}</span>
+                                        </td>
+                                        <td>
+                                            <strong>{{nombre}}</strong>
+                                            {{#if user}}
+                                            <br><small class="text-muted">{{user.email}}</small>
+                                            {{/if}}
+                                        </td>
+                                        <td>{{contacto}}</td>
+                                        <td>
+                                            <span class="badge bg-info">{{vehiculo}}</span>
+                                        </td>
+                                        <td>{{capacidad}} kg</td>
+                                        <td>
+                                            {{#if latitud}}
+                                                <span class="text-success">
+                                                    <i class="fas fa-check-circle me-1"></i>
+                                                    Configurada
+                                                </span>
+                                                <br>
+                                                <small class="text-muted">
+                                                    {{latitud}}, {{longitud}}
+                                                </small>
+                                            {{else}}
+                                                <span class="text-warning">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                                    Sin configurar
+                                                </span>
+                                            {{/if}}
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-column">
+                                                <small>
+                                                    <i class="fas fa-box me-1 text-primary"></i>
+                                                    {{pedidosAsignados}} asignados
+                                                </small>
+                                                <small>
+                                                    <i class="fas fa-check me-1 text-success"></i>
+                                                    {{pedidosEntregados}} entregados
+                                                </small>
+                                                <small>
+                                                    <i class="fas fa-percentage me-1 text-info"></i>
+                                                    {{tasaEntrega}}% tasa entrega
+                                                </small>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {{/each}}
+                                </tbody>
+                            </table>
+                        </div>
+                        {{else}}
+                        <div class="text-center py-5">
+                            <i class="fas fa-truck fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay distribuidores registrados</h5>
+                            <p class="text-muted">Usa el formulario de la izquierda para registrar el primer distribuidor.</p>
+                        </div>
+                        {{/if}}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información adicional -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <h6><i class="fas fa-info-circle text-primary me-1"></i>Proceso</h6>
+                                <small>1. Registrar distribuidor aquí</small>
+                            </div>
+                            <div class="col-md-3">
+                                <h6><i class="fas fa-mobile-alt text-success me-1"></i>App Móvil</h6>
+                                <small>2. Distribuidor descarga app</small>
+                            </div>
+                            <div class="col-md-3">
+                                <h6><i class="fas fa-map-marker-alt text-warning me-1"></i>Ubicación</h6>
+                                <small>3. Login establece coordenadas</small>
+                            </div>
+                            <div class="col-md-3">
+                                <h6><i class="fas fa-truck text-info me-1"></i>Operativo</h6>
+                                <small>4. Listo para recibir pedidos</small>
+                            </div>
+                        </div>
+                        <hr>
+                        <p class="text-center mb-0">
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                Última actualización: {{timestamp}}
+                            </small>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Manejar mensajes de éxito/error desde URL
+        window.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const success = urlParams.get('success');
+            const error = urlParams.get('error');
+            
+            if (success) {
+                showAlert('success', success);
+            }
+            
+            if (error) {
+                showAlert('danger', error);
+            }
+            
+            // Limpiar URL
+            if (success || error) {
+                const cleanUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+            }
+        });
+
+        function showAlert(type, message) {
+            const alertContainer = document.getElementById('alert-container');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            alertContainer.appendChild(alertDiv);
+            
+            // Auto-hide después de 5 segundos
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // Validación del formulario
+        document.getElementById('form-registro').addEventListener('submit', function(e) {
+            const btn = document.getElementById('btn-registrar');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Registrando...';
+            btn.disabled = true;
+        });
+
+        console.log('🚚 Página de distribuidores cargada');
+    </script>
+</body>
+</html>

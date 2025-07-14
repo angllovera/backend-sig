@@ -15,6 +15,8 @@ import { Distribuidor } from './distribuidor/entities/distribuidor.entity';
 import { Pedido } from './pedido/entities/pedido.entity';
 import { Pago } from './pago/entities/pago.entity';
 import { AppController } from './app.controller';
+import { AdminModule } from './admin/admin.module';
+
 
 @Module({
   imports: [
@@ -35,7 +37,7 @@ import { AppController } from './app.controller';
     PedidoModule,
     SimulacionModule,
     PagoModule,
-    PagesModule, // 🔧 AGREGAR ESTE MÓDULO
+    AdminModule,
   ],
   controllers: [AppController],
 })

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .card { border: none; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .form-control, .form-select { border-radius: 8px; }
+        .btn { border-radius: 8px; }
+        .required { color: red; }
+        #map { height: 300px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/admin">
+                <i class="fas fa-tachometer-alt me-2"></i>
+                Admin Panel
+            </a>
+            
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/admin">Dashboard</a>
+                <a class="nav-link" href="/admin/distribuidores">Distribuidores</a>
+                <a class="nav-link active" href="/admin/crear-pedido">Crear Pedido</a>
+                <a class="nav-link" href="/admin/pedidos">Ver Pedidos</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-4">
+                    <i class="fas fa-plus-circle text-success me-2"></i>
+                    Crear Nuevo Pedido
+                </h1>
+            </div>
+        </div>
+
+        <!-- Mostrar mensajes de error si los hay -->
+        <div id="alert-container"></div>
+
+        {{#if error}}
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            {{error}}
+        </div>
+        {{/if}}
+
+        <div class="row">
+            <!-- Formulario de pedido -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-edit me-2"></i>
+                            Información del Pedido
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="/admin/crear-pedido" method="POST" id="form-pedido">
+                            <div class="row">
+                                <!-- Información del cliente -->
+                                <div class="col-md-6">
+                                    <h6 class="text-primary">
+                                        <i class="fas fa-user me-1"></i>
+                                        Información del Cliente
+                                    </h6>
+                                    
+                                    <div class="mb-3">
+                                        <label for="cliente" class="form-label">
+                                            Nombre del Cliente <span class="required">*</span>
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            class="form-control" 
+                                            id="cliente" 
+                                            name="cliente" 
+                                            required
+                                            placeholder="Ej: María González"
+                                        >
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="direccionEntrega" class="form-label">
+                                            Dirección de Entrega <span class="required">*</span>
+                                        </label>
+                                        <textarea 
+                                            class="form-control" 
+                                            id="direccionEntrega" 
+                                            name="direccionEntrega" 
+                                            rows="3"
+                                            required
+                                            placeholder="Ej: Av. Banzer #123, Entre 2do y 3er anillo"
+                                        ></textarea>
+                                    </div>
+                                </div>
+
+                                <!-- Información del producto -->
+                                <div class="col-md-6">
+                                    <h6 class="text-primary">
+                                        <i class="fas fa-box me-1"></i>
+                                        Información del Producto
+                                    </h6>
+                                    
+                                    <div class="mb-3">
+                                        <label for="producto" class="form-label">
+                                            Producto <span class="required">*</span>
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            class="form-control" 
+                                            id="producto" 
+                                            name="producto" 
+                                            required
+                                            placeholder="Ej: Zapatillas deportivas"
+                                        >
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="cantidad" class="form-label">
+                                                    Cantidad <span class="required">*</span>
+                                                </label>
+                                                <input 
+                                                    type="number" 
+                                                    class="form-control" 
+                                                    id="cantidad" 
+                                                    name="cantidad" 
+                                                    min="1"
+                                                    required
+                                                    placeholder="1"
+                                                    oninput="calcularTotal()"
+                                                >
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="precio_unitario" class="form-label">
+                                                    Precio Unitario (Bs) <span class="required">*</span>
+                                                </label>
+                                                <input 
+                                                    type="number" 
+                                                    class="form-control" 
+                                                    id="precio_unitario" 
+                                                    name="precio_unitario" 
+                                                    step="0.01"
+                                                    min="0.01"
+                                                    required
+                                                    placeholder="15.50"
+                                                    oninput="calcularTotal()"
+                                                >
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Total calculado -->
+                                    <div class="alert alert-info">
+                                        <strong>Total a Pagar: Bs <span id="total-calculado">0.00</span></strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <!-- Ubicación y distribuidor -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-primary">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        Ubicación de Entrega
+                                    </h6>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="latitud" class="form-label">
+                                                    Latitud <span class="required">*</span>
+                                                </label>
+                                                <input 
+                                                    type="number" 
+                                                    class="form-control" 
+                                                    id="latitud" 
+                                                    name="latitud" 
+                                                    step="any"
+                                                    required
+                                                    placeholder="-17.783327"
+                                                    oninput="actualizarMapa()"
+                                                >
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="longitud" class="form-label">
+                                                    Longitud <span class="required">*</span>
+                                                </label>
+                                                <input 
+                                                    type="number" 
+                                                    class="form-control" 
+                                                    id="longitud" 
+                                                    name="longitud" 
+                                                    step="any"
+                                                    required
+                                                    placeholder="-63.182140"
+                                                    oninput="actualizarMapa()"
+                                                >
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="obtenerUbicacion()">
+                                        <i class="fas fa-crosshairs me-1"></i>
+                                        Usar Mi Ubicación
+                                    </button>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <h6 class="text-primary">
+                                        <i class="fas fa-truck me-1"></i>
+                                        Asignación de Distribuidor
+                                    </h6>
+                                    
+                                    <div class="mb-3">
+                                        <label for="distribuidorId" class="form-label">
+                                            Distribuidor (Opcional)
+                                        </label>
+                                        <select class="form-select" id="distribuidorId" name="distribuidorId">
+                                            <option value="">Asignar automáticamente</option>
+                                            {{#each distribuidores}}
+                                            <option value="{{id}}">
+                                                {{nombre}} - {{vehiculo}} ({{capacidad}}kg)
+                                            </option>
+                                            {{/each}}
+                                        </select>
+                                        <div class="form-text">
+                                            <small class="text-muted">
+                                                Si no seleccionas, se asignará automáticamente al distribuidor más cercano.
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <!-- Botones de acción -->
+                            <div class="d-flex justify-content-between">
+                                <a href="/admin/pedidos" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                                    Cancelar
+                                </a>
+                                
+                                <button type="submit" class="btn btn-success btn-lg" id="btn-crear">
+                                    <i class="fas fa-plus-circle me-2"></i>
+                                    Crear Pedido
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de información -->
+            <div class="col-lg-4">
+                <!-- Estado de autenticación -->
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-shield-alt me-2"></i>
+                            Estado del Sistema
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {{#if token}}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Autenticado correctamente</strong>
+                            <br><small>Conectado como usuario administrativo</small>
+                        </div>
+                        {{else}}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Error de autenticación</strong>
+                            <br><small>No se pudo iniciar sesión automáticamente</small>
+                        </div>
+                        {{/if}}
+                    </div>
+                </div>
+
+                <!-- Mapa de ubicación -->
+                <div class="card">
+                    <div class="card-header bg-warning">
+                        <h6 class="mb-0">
+                            <i class="fas fa-map me-2"></i>
+                            Vista Previa de Ubicación
+                        </h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="map"></div>
+                    </div>
+                    <div class="card-footer">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Ingresa las coordenadas para ver la ubicación en el mapa
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Distribuidores disponibles -->
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-truck me-2"></i>
+                            Distribuidores Disponibles
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {{#if distribuidores}}
+                        <div class="list-group list-group-flush">
+                            {{#each distribuidores}}
+                            <div class="list-group-item px-0">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <strong>{{nombre}}</strong>
+                                        <br><small class="text-muted">{{vehiculo}} - {{capacidad}}kg</small>
+                                    </div>
+                                    <div class="text-end">
+                                        {{#if latitud}}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check"></i>
+                                        </span>
+                                        {{else}}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-exclamation"></i>
+                                        </span>
+                                        {{/if}}
+                                    </div>
+                                </div>
+                            </div>
+                            {{/each}}
+                        </div>
+                        {{else}}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-truck fa-2x mb-2"></i>
+                            <p>No hay distribuidores disponibles</p>
+                        </div>
+                        {{/if}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Variables globales
+        let map;
+        let marker;
+
+        // Inicializar mapa simple
+        function initMap() {
+            const defaultLocation = { lat: -17.783327, lng: -63.182140 }; // Santa Cruz, Bolivia
+            
+            // Crear mapa simple con HTML/CSS (sin Google Maps API)
+            const mapContainer = document.getElementById('map');
+            mapContainer.innerHTML = `
+                <div class="d-flex align-items-center justify-content-center h-100 bg-light">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-map-marked-alt fa-3x mb-2"></i>
+                        <p class="mb-0">Ingresa coordenadas para mostrar ubicación</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Calcular total automáticamente
+        function calcularTotal() {
+            const cantidad = parseFloat(document.getElementById('cantidad').value) || 0;
+            const precio = parseFloat(document.getElementById('precio_unitario').value) || 0;
+            const total = cantidad * precio;
+            
+            document.getElementById('total-calculado').textContent = total.toFixed(2);
+        }
+
+        // Actualizar mapa cuando cambien las coordenadas
+        function actualizarMapa() {
+            const lat = parseFloat(document.getElementById('latitud').value);
+            const lng = parseFloat(document.getElementById('longitud').value);
+            
+            if (lat && lng) {
+                const mapContainer = document.getElementById('map');
+                mapContainer.innerHTML = `
+                    <div class="d-flex align-items-center justify-content-center h-100 bg-success text-white">
+                        <div class="text-center">
+                            <i class="fas fa-map-marker-alt fa-3x mb-2"></i>
+                            <p class="mb-0">Ubicación establecida</p>
+                            <small>${lat.toFixed(6)}, ${lng.toFixed(6)}</small>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Obtener ubicación del usuario
+        function obtenerUbicacion() {
+            if (navigator.geolocation) {
+                const btn = event.target;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Obteniendo...';
+                btn.disabled = true;
+                
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        document.getElementById('latitud').value = position.coords.latitude;
+                        document.getElementById('longitud').value = position.coords.longitude;
+                        actualizarMapa();
+                        
+                        btn.innerHTML = '<i class="fas fa-check me-1"></i>Ubicación obtenida';
+                        btn.className = 'btn btn-success btn-sm';
+                        
+                        setTimeout(() => {
+                            btn.innerHTML = '<i class="fas fa-crosshairs me-1"></i>Usar Mi Ubicación';
+                            btn.className = 'btn btn-outline-primary btn-sm';
+                            btn.disabled = false;
+                        }, 2000);
+                    },
+                    function(error) {
+                        console.error('Error obteniendo ubicación:', error);
+                        alert('No se pudo obtener la ubicación. Por favor ingresa las coordenadas manualmente.');
+                        
+                        btn.innerHTML = '<i class="fas fa-crosshairs me-1"></i>Usar Mi Ubicación';
+                        btn.disabled = false;
+                    }
+                );
+            } else {
+                alert('Tu navegador no soporta geolocalización.');
+            }
+        }
+
+        // Manejar envío del formulario
+        document.getElementById('form-pedido').addEventListener('submit', function(e) {
+            const btn = document.getElementById('btn-crear');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creando pedido...';
+            btn.disabled = true;
+            
+            // Validar coordenadas
+            const lat = parseFloat(document.getElementById('latitud').value);
+            const lng = parseFloat(document.getElementById('longitud').value);
+            
+            if (!lat || !lng || lat === 0 || lng === 0) {
+                e.preventDefault();
+                alert('Por favor ingresa coordenadas válidas para la ubicación de entrega.');
+                btn.innerHTML = '<i class="fas fa-plus-circle me-2"></i>Crear Pedido';
+                btn.disabled = false;
+                return;
+            }
+            
+            // Validar que el total sea mayor a 0
+            const cantidad = parseFloat(document.getElementById('cantidad').value);
+            const precio = parseFloat(document.getElementById('precio_unitario').value);
+            
+            if (!cantidad || !precio || cantidad <= 0 || precio <= 0) {
+                e.preventDefault();
+                alert('Por favor verifica la cantidad y precio del producto.');
+                btn.innerHTML = '<i class="fas fa-plus-circle me-2"></i>Crear Pedido';
+                btn.disabled = false;
+                return;
+            }
+        });
+
+        // Manejar mensajes de error desde URL
+        window.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
+            
+            if (error) {
+                showAlert('danger', error);
+                
+                // Limpiar URL
+                const cleanUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+            }
+            
+            // Inicializar mapa
+            initMap();
+            
+            // Establecer coordenadas por defecto de Santa Cruz
+            document.getElementById('latitud').value = -17.783327;
+            document.getElementById('longitud').value = -63.182140;
+            actualizarMapa();
+        });
+
+        function showAlert(type, message) {
+            const alertContainer = document.getElementById('alert-container');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            alertContainer.appendChild(alertDiv);
+            
+            // Auto-hide después de 5 segundos
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        console.log('📦 Página de crear pedido cargada');
+        console.log('🔐 Token disponible:', {{#if token}}true{{else}}false{{/if}});
+    </script>
+</body>
+</html>
