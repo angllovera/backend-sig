@@ -558,6 +558,36 @@ async calcularRutaPersonalizada(distribuidorId: number, lat: number, lng: number
     return pedidoGuardado;
   }
 
+
+  // 🔧 FUNCIÓN SIMPLE: Agregar observación y marcar como entregado
+  async agregarObservacion(id: number, datos: {
+    observacion: string;
+    latitud: number;
+    longitud: number;
+    estado?: string; // 🔧 NUEVO: parámetro opcional
+  }): Promise<Pedido> {
+    const pedido = await this.pedidoRepo.findOne({ where: { id } });
+    if (!pedido) throw new NotFoundException('Pedido no encontrado');
+
+    console.log(`📝 Agregando observación al pedido ${id}: ${datos.observacion}`);
+    console.log(`📊 Estado solicitado: ${datos.estado || 'por defecto (entregado)'}`);
+
+    // 🔧 NUEVO: Usar estado personalizado o 'entregado' por defecto
+    pedido.estado = datos.estado || 'entregado';
+    pedido.entregado = true; // Siempre sacar de la lista activa
+    pedido.observacion = datos.observacion;
+    
+    // Actualizar coordenadas donde se realizó la acción
+    pedido.latitud = datos.latitud;
+    pedido.longitud = datos.longitud;
+
+    const pedidoGuardado = await this.pedidoRepo.save(pedido);
+    
+    console.log(`✅ Observación agregada con estado: "${pedido.estado}"`);
+    
+    return pedidoGuardado;
+  }
+
   /**
    * Método original (asignación circular) - mantener por compatibilidad
    */

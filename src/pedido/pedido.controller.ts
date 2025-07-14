@@ -56,7 +56,28 @@ export class PedidoController {
       };
     }
   }
-
+  
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/observacion')
+  async agregarObservacion(
+    @Param('id') id: string,
+    @Body() datos: {
+      observacion: string;
+      latitud: number;
+      longitud: number;
+      estado?: string; // 🔧 NUEVO: campo opcional
+    }
+  ) {
+    console.log(`📝 Agregando observación a pedido ${id}: ${datos.observacion}`);
+    console.log(`📊 Estado: ${datos.estado || 'entregado (por defecto)'}`);
+    
+    const resultado = await this.pedidoService.agregarObservacion(+id, datos);
+    
+    return {
+      mensaje: 'Observación agregada exitosamente',
+      pedido: resultado
+    };
+  }
   @Get(':id')
   getById(@Param('id') id: string) {
     return this.pedidoService.getById(+id);
