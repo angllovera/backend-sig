@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Pedido } from './entities/pedido.entity';
-import { Repository } from 'typeorm';
+import { Repository, Not, IsNull } from 'typeorm';
 import { Distribuidor } from '../distribuidor/entities/distribuidor.entity';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import axios from 'axios';
@@ -170,6 +170,330 @@ export class PedidoService {
     return pedido;
   }
 
+  // =============== 🔧 NUEVOS MÉTODOS PARA POLLING ===============
+
+  /**
+   * 🔧 NUEVO: Contar pedidos pendientes (método ligero para polling)
+   */
+  async contarPedidosPendientes(distribuidorId: number): Promise<number> {
+    console.log(`🔢 Contando pedidos pendientes para distribuidor ${distribuidorId}`);
+    
+    const count = await this.pedidoRepo.count({
+      where: {
+        distribuidor: { userId: distribuidorId },
+        entregado: false,
+      },
+    });
+    
+    console.log(`📊 Pedidos pendientes: ${count}`);
+    return count;
+  }
+
+  /**
+   * 🔧 NUEVO: Obtener última entrega del distribuidor
+   */
+  async getUltimaEntrega(distribuidorId: number): Promise<Pedido | null> {
+    console.log(`📍 Obteniendo última entrega para distribuidor ${distribuidorId}`);
+    
+    const ultimaEntrega = await this.pedidoRepo.findOne({
+      where: {
+        distribuidor: { userId: distribuidorId },
+        entregado: true,
+        latitud: Not(IsNull()),
+        longitud: Not(IsNull()),
+      },
+      order: {
+        fecha: 'DESC',
+        id: 'DESC',
+      },
+    });
+
+    if (ultimaEntrega) {
+      console.log(`✅ Última entrega encontrada: Pedido ${ultimaEntrega.id} en ${ultimaEntrega.latitud}, ${ultimaEntrega.longitud}`);
+    } else {
+      console.log(`ℹ️ No se encontró última entrega para distribuidor ${distribuidorId}`);
+    }
+
+    return ultimaEntrega;
+  }
+
+  /**
+   * 🔧 MEJORADO: Obtener última ubicación de entrega como coordenadas
+   */
+  async obtenerUltimaUbicacionEntrega(distribuidorId: number): Promise<{ lat: number; lng: number } | null> {
+    console.log(`📍 Buscando última ubicación de entrega para distribuidor ${distribuidorId}`);
+    
+    const ultimaEntrega = await this.getUltimaEntrega(distribuidorId);
+
+    if (ultimaEntrega && ultimaEntrega.latitud && ultimaEntrega.longitud) {
+      console.log(`✅ Última entrega encontrada en: ${ultimaEntrega.latitud}, ${ultimaEntrega.longitud}`);
+      return {
+        lat: ultimaEntrega.latitud,
+        lng: ultimaEntrega.longitud
+      };
+    }
+
+    console.log(`ℹ️ No se encontró última entrega, usar ubicación del distribuidor`);
+    return null;
+  }
+
+  // =============== CÁLCULO DE RUTAS ===============
+
+// 🔧 CORREGIDO: calcularRuta - Envía coordenadas como números
+async calcularRuta(distribuidorId: number, lat: number, lng: number) {
+  console.log(`🗺️ Calculando rutas para distribuidor ${distribuidorId}`);
+
+  // 🔧 NUEVO: Intentar usar última ubicación de entrega como punto de inicio
+  const ultimaUbicacion = await this.obtenerUltimaUbicacionEntrega(distribuidorId);
+  const puntoInicio = ultimaUbicacion || { lat, lng };
+  
+  if (ultimaUbicacion) {
+    console.log(`📍 Usando última ubicación de entrega como inicio: ${puntoInicio.lat}, ${puntoInicio.lng}`);
+  } else {
+    console.log(`📍 Usando ubicación actual como inicio: ${puntoInicio.lat}, ${puntoInicio.lng}`);
+  }
+
+  // Obtener solo pedidos NO entregados
+  const pedidos = await this.pedidoRepo.find({
+    where: {
+      distribuidor: { userId: distribuidorId },
+      entregado: false, // 🔧 IMPORTANTE: Solo pedidos pendientes
+    },
+    relations: ['distribuidor', 'pagos'],
+    order: { id: 'ASC' },
+    take: 23,
+  });
+
+  console.log(`📋 Pedidos pendientes encontrados: ${pedidos.length}`);
+
+  if (pedidos.length === 0) {
+    console.log(`ℹ️ No hay pedidos pendientes para este distribuidor`);
+    return {
+      mensaje: 'No hay pedidos pendientes asignados a este distribuidor',
+      pedidos: [],
+      ruta: null,
+      origen: puntoInicio, // ✅ Ya son números
+    };
+  }
+
+  const destinos = pedidos
+    .filter(p => p.latitud != null && p.longitud != null)
+    .map(p => ({
+      id: p.id,
+      coordenadas: `${p.latitud},${p.longitud}`,
+      direccion: p.direccionEntrega,
+      cliente: p.cliente,
+      producto: p.producto,
+      codigoPedido: p.codigoPedido,
+      total: p.total,
+      // 🔧 NUEVO: Verificar estado de pago
+      pagado: p.pagos?.some(pago => pago.estado === 'completado') ?? false,
+      latitud: p.latitud,
+      longitud: p.longitud,
+    }));
+
+  console.log(`📍 Destinos válidos con coordenadas: ${destinos.length}`);
+
+  if (destinos.length === 0) {
+    return {
+      mensaje: 'No hay pedidos pendientes con coordenadas válidas',
+      pedidos: [],
+      ruta: null,
+      origen: puntoInicio, // ✅ Ya son números
+    };
+  }
+
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey) throw new Error('Google Maps API Key no configurada');
+
+  try {
+    const waypoints = destinos.map(d => d.coordenadas).join('|');
+    const response = await axios.get('https://maps.googleapis.com/maps/api/directions/json', {
+      params: {
+        origin: `${puntoInicio.lat},${puntoInicio.lng}`,
+        destination: destinos[destinos.length - 1].coordenadas,
+        waypoints: `optimize:true|${waypoints}`,
+        mode: 'driving',
+        alternatives: true, // Rutas alternativas
+        language: 'es',
+        region: 'bo',
+        key: apiKey,
+      },
+    });
+
+    if (response.data.status !== 'OK') {
+      throw new Error(`Google Maps API Error: ${response.data.status}`);
+    }
+
+    const rutas = response.data.routes.map((route, idx) => {
+      const legs = route.legs || [];
+      const distancia = legs.reduce((acc, leg) => acc + (leg.distance?.value || 0), 0);
+      const duracion = legs.reduce((acc, leg) => acc + (leg.duration?.value || 0), 0);
+
+      return {
+        polyline: route.overview_polyline?.points || null,
+        distanciaKm: Math.round(distancia / 1000 * 100) / 100,
+        duracionMin: Math.round(duracion / 60),
+        esPrincipal: idx === 0
+      };
+    });
+
+    const waypointOrder = response.data.routes[0]?.waypoint_order || [];
+    const pedidosOrdenados = waypointOrder.map((index, orden) => {
+      const destino = destinos[index];
+      return {
+        id: destino.id,
+        direccion: destino.direccion,
+        coordenadas: destino.coordenadas,
+        cliente: destino.cliente,
+        producto: destino.producto,
+        codigoPedido: destino.codigoPedido,
+        orden: orden + 1,
+        total: destino.total,
+        // 🔧 NUEVO: Incluir datos adicionales para el frontend
+        pagado: destino.pagado,
+        latitud: destino.latitud,
+        longitud: destino.longitud,
+      };
+    });
+
+    console.log(`✅ Ruta calculada exitosamente: ${rutas.length} alternativas, ${pedidosOrdenados.length} paradas`);
+
+    return {
+      origen: puntoInicio, // ✅ { lat: number, lng: number }
+      destino: puntoInicio, // ✅ El distribuidor regresa al punto de inicio
+      pedidos: pedidosOrdenados,
+      ruta: {
+        rutas: rutas,
+        distanciaTotal: rutas[0]?.distanciaKm || 0,
+        tiempoTotal: rutas[0]?.duracionMin || 0,
+      },
+      optimizacion: {
+        ordenOriginal: destinos.map((_, index) => index),
+        ordenOptimizado: waypointOrder,
+        ahorro: waypointOrder.length > 0 ? 'Ruta optimizada automáticamente' : 'Sin optimización aplicada',
+        puntoInicio: ultimaUbicacion ? 'Última ubicación de entrega' : 'Ubicación actual',
+      }
+    };
+  } catch (error) {
+    console.error('❌ Error al calcular ruta:', error);
+    throw new Error(`Error al calcular ruta: ${error.message}`);
+  }
+}
+
+// 🔧 CORREGIDO: calcularRutaPersonalizada - Envía coordenadas como números
+async calcularRutaPersonalizada(distribuidorId: number, lat: number, lng: number, pedidoIds: number[]) {
+  console.log(`🗺️ Calculando ruta personalizada para distribuidor ${distribuidorId}`);
+  console.log(`📥 Pedidos seleccionados: ${pedidoIds.join(', ')}`);
+
+  // 🔧 NUEVO: Usar última ubicación de entrega como punto de inicio
+  const ultimaUbicacion = await this.obtenerUltimaUbicacionEntrega(distribuidorId);
+  const puntoInicio = ultimaUbicacion || { lat, lng };
+  
+  console.log(`📍 Punto de inicio: ${puntoInicio.lat}, ${puntoInicio.lng}`);
+
+  // Obtener solo los pedidos seleccionados que NO estén entregados
+  const pedidos = await this.pedidoRepo
+    .createQueryBuilder('pedido')
+    .leftJoinAndSelect('pedido.pagos', 'pagos')
+    .where('pedido.id IN (:...ids)', { ids: pedidoIds })
+    .andWhere('pedido.entregado = false') // 🔧 Solo pedidos pendientes
+    .getMany();
+
+  console.log(`📋 Pedidos válidos encontrados: ${pedidos.length}/${pedidoIds.length}`);
+
+  const destinos = pedidos
+    .filter(p => p.latitud !== null && p.longitud !== null)
+    .map(p => ({
+      id: p.id,
+      coordenadas: `${p.latitud},${p.longitud}`,
+      direccion: p.direccionEntrega,
+      cliente: p.cliente,
+      producto: p.producto,
+      codigoPedido: p.codigoPedido,
+      total: p.total,
+      pagado: p.pagos?.some(pago => pago.estado === 'completado') ?? false,
+      latitud: p.latitud,
+      longitud: p.longitud,
+    }));
+
+  if (destinos.length === 0) {
+    return {
+      mensaje: 'No hay coordenadas válidas en los pedidos seleccionados o todos están entregados',
+      pedidos: [],
+      ruta: null,
+      origen: puntoInicio, // ✅ Ya son números
+    };
+  }
+
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey) throw new Error('Google Maps API Key no configurada');
+
+  try {
+    const waypoints = destinos.map(d => d.coordenadas).join('|');
+
+    const response = await axios.get('https://maps.googleapis.com/maps/api/directions/json', {
+      params: {
+        origin: `${puntoInicio.lat},${puntoInicio.lng}`,
+        destination: destinos[destinos.length - 1].coordenadas,
+        waypoints: `optimize:true|${waypoints}`,
+        mode: 'driving',
+        alternatives: true,
+        language: 'es',
+        region: 'bo',
+        key: apiKey,
+      },
+    });
+
+    if (response.data.status !== 'OK') {
+      throw new Error(`Google Maps API Error: ${response.data.status}`);
+    }
+
+    const rutas = response.data.routes.map((route, idx) => {
+      const legs = route.legs || [];
+      const distancia = legs.reduce((acc, leg) => acc + (leg.distance?.value || 0), 0);
+      const duracion = legs.reduce((acc, leg) => acc + (leg.duration?.value || 0), 0);
+
+      return {
+        polyline: route.overview_polyline?.points || null,
+        distanciaKm: Math.round(distancia / 1000 * 100) / 100,
+        duracionMin: Math.round(duracion / 60),
+        esPrincipal: idx === 0
+      };
+    });
+
+    const waypointOrder = response.data.routes[0]?.waypoint_order || [];
+    const pedidosOrdenados = waypointOrder.map((index, orden) => {
+      const destino = destinos[index];
+      return {
+        ...destino,
+        orden: orden + 1,
+      };
+    });
+
+    console.log(`✅ Ruta personalizada calculada: ${rutas.length} alternativas`);
+
+    return {
+      origen: puntoInicio, // ✅ { lat: number, lng: number }
+      pedidos: pedidosOrdenados,
+      ruta: {
+        rutas: rutas,
+        distanciaTotal: rutas[0]?.distanciaKm || 0,
+        tiempoTotal: rutas[0]?.duracionMin || 0,
+      },
+      optimizacion: {
+        puntoInicio: ultimaUbicacion ? 'Última ubicación de entrega' : 'Ubicación actual',
+        pedidosSeleccionados: pedidoIds.length,
+        pedidosValidos: destinos.length,
+      }
+    };
+  } catch (error) {
+    console.error('❌ Error al calcular ruta personalizada:', error);
+    throw new Error(`Error al calcular ruta personalizada: ${error.message}`);
+  }
+}
+
+
   /**
    * Obtener pedidos por distribuidor (método mejorado)
    */
@@ -178,7 +502,7 @@ export class PedidoService {
     
     const pedidos = await this.pedidoRepo.find({
       where: { 
-        distribuidor: { id: distribuidorId }, 
+        distribuidor: { userId: distribuidorId }, 
         entregado: false 
       },
       relations: ['distribuidor'],
@@ -217,13 +541,21 @@ export class PedidoService {
     const pedido = await this.pedidoRepo.findOne({ where: { id } });
     if (!pedido) throw new NotFoundException('Pedido no encontrado');
 
+    console.log(`📦 Registrando entrega del pedido ${id} en: ${datos.latitud}, ${datos.longitud}`);
+
     pedido.estado = datos.estado;
     pedido.observacion = datos.observacion || '';
     pedido.entregado = datos.estado === 'entregado';
+    
+    // 🔧 IMPORTANTE: Actualizar coordenadas de entrega
     pedido.latitud = datos.latitud;
     pedido.longitud = datos.longitud;
 
-    return this.pedidoRepo.save(pedido);
+    const pedidoGuardado = await this.pedidoRepo.save(pedido);
+    
+    console.log(`✅ Entrega registrada - Próximas rutas usarán esta ubicación como punto de inicio`);
+    
+    return pedidoGuardado;
   }
 
   /**
@@ -277,136 +609,6 @@ export class PedidoService {
     return pedido;
   }
 
-  // =============== RUTA OPTIMIZADA ===============
-
-  /**
-   * Calcular ruta optimizada con Google Directions API
-   */
-
-
-  async calcularRuta(distribuidorId: number, lat: number, lng: number) {
-    console.log(`🗺️ Calculando ruta óptima para distribuidor ${distribuidorId}`);
-    
-    const pedidos = await this.pedidoRepo.find({
-      where: {
-        distribuidor: { id: distribuidorId },
-        entregado: false,
-      },
-      order: { id: 'ASC' },
-      take: 23, // Máximo 23 waypoints (límite de Google Maps)
-    });
-
-    console.log(`📦 Pedidos encontrados: ${pedidos.length}`);
-
-    const destinos = pedidos
-      .filter(p => p.latitud !== null && p.longitud !== null)
-      .map(p => ({
-        id: p.id,
-        coordenadas: `${p.latitud},${p.longitud}`,
-        direccion: p.direccionEntrega,
-        cliente: p.cliente,
-        producto: p.producto,
-        codigoPedido: p.codigoPedido,
-      }));
-
-    if (destinos.length === 0) {
-      return { 
-        mensaje: 'No hay pedidos con coordenadas asignados a este distribuidor',
-        pedidos: [],
-        ruta: null 
-      };
-    }
-
-    console.log(`📍 Destinos válidos: ${destinos.length}`);
-
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('Google Maps API Key no configurada');
-    }
-    
-    try {
-      const waypoints = destinos.map(d => d.coordenadas).join('|');
-      
-      const response = await axios.get('https://maps.googleapis.com/maps/api/directions/json', {
-        params: {
-          origin: `${lat},${lng}`,
-          destination: destinos[destinos.length - 1].coordenadas,
-          waypoints: `optimize:true|${waypoints}`,
-          mode: 'driving',
-          language: 'es',
-          region: 'bo',
-          key: apiKey,
-        },
-      });
-
-      if (response.data.status !== 'OK') {
-        console.error('❌ Error en Google Directions API:', response.data.status);
-        throw new Error(`Error en Google Directions API: ${response.data.status}`);
-      }
-
-      const route = response.data.routes[0];
-      if (!route) {
-        throw new Error('No se encontró ruta');
-      }
-
-      const waypointOrder = route.waypoint_order || [];
-      const pedidosOrdenados = waypointOrder.map((index, orden) => {
-        const destino = destinos[index];
-        const pedidoOriginal = pedidos.find(p => p.id === destino.id);
-        return {
-          id: destino.id,
-          direccion: destino.direccion,
-          coordenadas: destino.coordenadas,
-          cliente: destino.cliente,
-          producto: destino.producto,
-          codigoPedido: destino.codigoPedido,
-          orden: orden + 1,
-          estado: 'pendiente',
-          total: pedidoOriginal?.total || 0, 
-        };
-      });
-
-      const legs = route.legs || [];
-      const distanciaTotal = legs.reduce((acc, leg) => acc + (leg.distance?.value || 0), 0);
-      const tiempoTotal = legs.reduce((acc, leg) => acc + (leg.duration?.value || 0), 0);
-
-      console.log(`✅ Ruta calculada: ${distanciaTotal}m, ${tiempoTotal}s`);
-
-      return {
-        origen: { lat, lng },
-        destino: { lat, lng },
-        pedidos: pedidosOrdenados,
-        ruta: {
-          polyline: route.overview_polyline?.points || null,
-          distanciaTotal: Math.round(distanciaTotal / 1000 * 100) / 100,
-          tiempoTotal: Math.round(tiempoTotal / 60),
-          instrucciones: legs.map((leg, index) => ({
-            paso: index + 1,
-            distancia: leg.distance?.text || '',
-            duracion: leg.duration?.text || '',
-            instrucciones: leg.steps?.map(step => ({
-              instruccion: step.html_instructions?.replace(/<[^>]*>/g, '') || '',
-              distancia: step.distance?.text || '',
-              duracion: step.duration?.text || '',
-            })) || []
-          }))
-        },
-        optimizacion: {
-          ordenOriginal: destinos.map((_, index) => index),
-          ordenOptimizado: waypointOrder,
-          ahorro: waypointOrder.length > 0 ? 'Ruta optimizada automáticamente' : 'Sin optimización aplicada'
-        }
-      };
-      
-    } catch (error) {
-      console.error('❌ Error al calcular ruta:', error);
-      throw new Error(`Error al calcular ruta: ${error.message}`);
-    }
-  }
-
-
-
   // =============== ESTADÍSTICAS ===============
 
   /**
@@ -416,7 +618,7 @@ export class PedidoService {
     console.log(`📊 Obteniendo estadísticas para distribuidor ${distribuidorId}`);
     
     const totalPedidos = await this.pedidoRepo.count({
-      where: { distribuidor: { id: distribuidorId } }
+      where: { distribuidor: { userId: distribuidorId } }
     });
 
     const pedidosEntregados = await this.pedidoRepo.count({
@@ -460,7 +662,7 @@ export class PedidoService {
     
     const pedidosEntregados = await this.pedidoRepo.find({
       where: { 
-        distribuidor: { id: distribuidorId },
+        distribuidor: { userId: distribuidorId   },
         entregado: true 
       },
       order: { fecha: 'DESC' },
